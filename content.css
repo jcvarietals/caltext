@@ -1,0 +1,418 @@
+/* Cal Grabr — content.css */
+/* All selectors namespaced with #cg- or .cg- to avoid conflicts */
+
+/* ── Overlay ── */
+#cg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+  user-select: none;
+}
+
+
+/* ── Highlight blocks ── */
+.cg-highlight {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9001;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+.cg-highlight-preview {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9002;
+  border-radius: 3px;
+  box-sizing: border-box;
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+}
+
+/* ── Panel ── */
+#cg-panel {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 280px;
+  max-height: 85vh;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  font-size: 13px;
+  color: #202124;
+  transition: transform 0.2s ease;
+  filter: drop-shadow(-3px 0 10px rgba(0, 0, 0, 0.18));
+}
+
+#cg-panel.cg-panel-collapsed {
+  transform: translateY(-50%) translateX(264px);
+}
+
+/* ── Collapse tab ── */
+#cg-tab {
+  width: 16px;
+  flex-shrink: 0;
+  background: #1a73e8;
+  border-radius: 8px 0 0 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 10px 0;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+#cg-tab:hover {
+  background: #1557b0;
+}
+
+/* ── Panel body ── */
+#cg-panel-body {
+  flex: 1;
+  background: #ffffff;
+  border-radius: 0 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Header ── */
+#cg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid #e8eaed;
+  flex-shrink: 0;
+}
+
+#cg-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a73e8;
+  letter-spacing: -0.1px;
+}
+
+#cg-collapse-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #5f6368;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+#cg-collapse-btn:hover {
+  background: #f1f3f4;
+  color: #202124;
+}
+
+/* ── Mode toggle ── */
+#cg-mode-row {
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+
+#cg-mode-toggle {
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1.5px solid #dadce0;
+  background: #f8f9fa;
+  color: #5f6368;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+#cg-mode-toggle::before {
+  content: '●';
+  font-size: 10px;
+  color: #bdc1c6;
+  flex-shrink: 0;
+}
+
+#cg-mode-toggle:hover {
+  border-color: #1a73e8;
+  background: #e8f0fe;
+}
+
+#cg-mode-toggle.cg-mode-on {
+  background: #e8f0fe;
+  border-color: #1a73e8;
+  color: #1a73e8;
+}
+
+#cg-mode-toggle.cg-mode-on::before {
+  color: #34a853;
+}
+
+#cg-mode-toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Output area ── */
+#cg-output-wrap {
+  flex: 1;
+  padding: 0 12px;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#cg-output {
+  flex: 1;
+  width: 100%;
+  min-height: 100px;
+  resize: none;
+  border: 1px solid #e8eaed;
+  border-radius: 6px;
+  padding: 8px;
+  font-family: 'Courier New', 'Roboto Mono', monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #202124;
+  background: #f8f9fa;
+  box-sizing: border-box;
+  outline: none;
+}
+
+#cg-output:focus {
+  border-color: #1a73e8;
+  background: #fff;
+}
+
+/* ── Action buttons ── */
+#cg-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+
+.cg-action-btn {
+  flex: 1;
+  padding: 5px 4px;
+  border-radius: 5px;
+  border: 1px solid #dadce0;
+  background: #fff;
+  color: #5f6368;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.cg-action-btn:hover {
+  background: #f1f3f4;
+  border-color: #bdc1c6;
+  color: #202124;
+}
+
+.cg-action-btn:active {
+  background: #e8eaed;
+}
+
+#cg-copy-btn:hover {
+  background: #e8f0fe;
+  border-color: #1a73e8;
+  color: #1a73e8;
+}
+
+#cg-copy-btn.cg-copied {
+  background: #e6f4ea;
+  border-color: #34a853;
+  color: #34a853;
+}
+
+/* ── Settings ── */
+#cg-settings-wrap {
+  flex-shrink: 0;
+  border-top: 1px solid #e8eaed;
+  overflow-y: auto;
+  max-height: 220px;
+}
+
+#cg-settings-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: #5f6368;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+}
+
+#cg-settings-toggle:hover {
+  background: #f8f9fa;
+  color: #202124;
+}
+
+#cg-settings-toggle .cg-arrow {
+  font-size: 9px;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+
+#cg-settings-toggle.cg-open .cg-arrow {
+  transform: rotate(90deg);
+}
+
+#cg-settings-body {
+  display: none;
+  padding: 4px 12px 12px;
+}
+
+#cg-settings-body.cg-open {
+  display: block;
+}
+
+.cg-setting-row {
+  margin-bottom: 10px;
+}
+
+.cg-setting-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #5f6368;
+  margin-bottom: 4px;
+}
+
+.cg-setting-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #202124;
+  box-sizing: border-box;
+  font-family: 'Courier New', monospace;
+  outline: none;
+}
+
+.cg-setting-input:focus {
+  border-color: #1a73e8;
+}
+
+#cg-format-preview {
+  font-size: 11px;
+  color: #5f6368;
+  margin-top: 3px;
+  font-style: italic;
+  min-height: 14px;
+}
+
+.cg-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#cg-color-input {
+  width: 32px;
+  height: 26px;
+  padding: 2px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cg-opacity-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cg-opacity-wrap span {
+  font-size: 11px;
+  color: #5f6368;
+  white-space: nowrap;
+}
+
+#cg-opacity-input {
+  flex: 1;
+  cursor: pointer;
+  accent-color: #1a73e8;
+}
+
+.cg-increment-row {
+  display: flex;
+  gap: 6px;
+}
+
+.cg-increment-btn {
+  flex: 1;
+  padding: 5px 0;
+  border-radius: 4px;
+  border: 1.5px solid #dadce0;
+  background: #fff;
+  color: #5f6368;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.cg-increment-btn:hover {
+  border-color: #1a73e8;
+  color: #1a73e8;
+}
+
+.cg-increment-btn.cg-active {
+  background: #e8f0fe;
+  border-color: #1a73e8;
+  color: #1a73e8;
+}
+
+/* ── Scrollbar in panel ── */
+#cg-output::-webkit-scrollbar,
+#cg-settings-wrap::-webkit-scrollbar {
+  width: 4px;
+}
+
+#cg-output::-webkit-scrollbar-track,
+#cg-settings-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#cg-output::-webkit-scrollbar-thumb,
+#cg-settings-wrap::-webkit-scrollbar-thumb {
+  background: #dadce0;
+  border-radius: 2px;
+}
