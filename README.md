@@ -5,6 +5,8 @@ A Chrome extension for Google Calendar that lets you click and drag to select ti
 Sharing availability means opening your calendar, scanning the week, and carefully typing out time slots. It's slow, error-prone, and easy to get the wrong day or forget the timezone.
 
 **CalText:** Turn on selection mode, drag over the times you're free and copy. 
+<img width="1209" height="510" alt="Use CalText in Week view" src="https://github.com/user-attachments/assets/3f410dc6-9998-44ad-b370-4d4c7af9f76d" />
+
 
 ---
 
@@ -15,7 +17,7 @@ CalText is not yet on the Chrome Web Store. To install:
 1. Download or clone this repo
 2. Go to `chrome://extensions`
 3. Enable **Developer mode** (top right)
-4. Click **Load unpacked** and select the `grabr` folder
+4. Click **Load unpacked** and select the `caltext-main` folder
 5. Navigate to [Google Calendar](https://calendar.google.com) in week view
 
 ---
@@ -23,7 +25,7 @@ CalText is not yet on the Chrome Web Store. To install:
 ## How to use
 
 1. Open Google Calendar in **week view**
-2. Click the **CG tab** on the right edge of the screen to open the panel
+2. Click the **CT tab** on the right edge of the screen to open the panel
 3. Click **Selection Mode: OFF** to turn it on
 4. Click and drag on any time slot to select it — it highlights blue
 5. Drag over an existing highlight to **remove** part of it
