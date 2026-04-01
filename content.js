@@ -44,7 +44,6 @@
     },
     calibrated:  false,
     scrollRaf:   false,
-    mutationBusy: false,
   };
 
 
@@ -105,9 +104,9 @@
     const idx  = cols.indexOf(col);
     const scrollR = S.cal.scrollEl ? S.cal.scrollEl.getBoundingClientRect() : null;
 
-    // Left boundary: midpoint to previous column, or scroll container left
+    // Left boundary: midpoint to previous column, or column left edge
     const left = idx === 0
-      ? (scrollR ? scrollR.left + (col.rect.left - scrollR.left) : col.rect.left)
+      ? col.rect.left
       : (cols[idx - 1].x + col.x) / 2;
 
     // Right boundary: midpoint to next column, or scroll container content edge (excludes scrollbar)
@@ -177,7 +176,12 @@
     return best;
   }
 
+  function isUnsupportedView() {
+    return /\/r\/(month|year|agenda|schedule)/.test(location.pathname);
+  }
+
   function calibrate() {
+    if (isUnsupportedView()) { S.calibrated = false; return false; }
     const dayCols = findDayCols();
     if (!dayCols.length) return false;
 
@@ -438,9 +442,14 @@
     document.addEventListener('click',     onDocClick,  { capture: true });
   }
 
+  function isInsidePopup(target) {
+    return !!target.closest('[role="menu"], [role="dialog"], [role="listbox"], [role="option"]');
+  }
+
   function onDocClick(e) {
     if (!S.modeOn || !S.calibrated) return;
     if (e.target.closest('#cg-panel')) return;
+    if (isInsidePopup(e.target)) return;
     if (!isInGrid(e.clientX, e.clientY)) return;
     e.preventDefault();
     e.stopPropagation();
@@ -449,6 +458,7 @@
   function onMouseDown(e) {
     if (!S.modeOn || !S.calibrated) return;
     if (e.target.closest('#cg-panel')) return;
+    if (isInsidePopup(e.target)) return;
     if (!isInGrid(e.clientX, e.clientY)) return;
 
     e.preventDefault();
@@ -678,13 +688,12 @@
     const btn     = document.getElementById('cg-mode-toggle');
     const warning = document.getElementById('cg-week-warning');
     if (!btn) return;
-    const on     = S.modeOn;
-    const onWeek = /\/r\/(week|day|4day)/.test(location.pathname);
+    const on = S.modeOn;
     btn.textContent = `Selection Mode: ${on ? 'ON' : 'OFF'}`;
     btn.classList.toggle('cg-mode-on', on);
-    btn.disabled = !onWeek || !S.calibrated;
+    btn.disabled = !S.calibrated;
     btn.title    = '';
-    if (warning) warning.style.display = onWeek ? 'none' : 'block';
+    if (warning) warning.style.display = S.calibrated ? 'none' : 'block';
   }
 
   function updateOutput() {
@@ -734,7 +743,9 @@
     mutTimer = setTimeout(() => {
       if (!document.getElementById('cg-overlay')) injectOverlay();
       if (!document.getElementById('cg-panel'))   injectPanel();
-      if (calibrate()) { render(); updateModeBtn(); }
+      calibrate();
+      render();
+      updateModeBtn();
     }, 300);
   }
 
@@ -742,18 +753,11 @@
     const url = location.href;
     if (url === lastUrl) return;
     lastUrl = url;
-    if (!/\/r\/(week|day|4day)/.test(location.pathname)) {
-      S.calibrated = false;
-      if (S.modeOn) {
-        S.modeOn = false;
-        const cs = document.getElementById('cg-cursor-style');
-        if (cs) cs.textContent = '';
-      }
-      updateModeBtn();
-    } else {
-      S.calibrated = false;
-      setTimeout(() => tryCalibrate(), 500);
-    }
+    S.calibrated = false;
+    if (S.modeOn) { S.modeOn = false; applyCrosshair(); }
+    render();
+    updateModeBtn();
+    if (!isUnsupportedView()) setTimeout(() => tryCalibrate(), 500);
   }
 
   function patchHistory() {
