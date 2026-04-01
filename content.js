@@ -1,7 +1,7 @@
-/* Cal Grabr — content.js
+/* CalText — content.js
  * Pure vanilla JS. No network requests. Everything client-side.
  */
-(function CalGrabr() {
+(function CalText() {
   'use strict';
 
   // ── Constants ──────────────────────────────────────────────────────────────
@@ -508,10 +508,10 @@
     panel.id    = 'cg-panel';
     if (S.collapsed) panel.classList.add('cg-panel-collapsed');
     panel.innerHTML = `
-      <div id="cg-tab" title="Cal Grabr">CG</div>
+      <div id="cg-tab" title="CalText">CT</div>
       <div id="cg-panel-body">
         <div id="cg-header">
-          <span id="cg-title">Cal Grabr</span>
+          <span id="cg-title">CalText</span>
           <button id="cg-collapse-btn" title="Collapse">&#9664;</button>
         </div>
         <div id="cg-mode-row">

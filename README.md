@@ -1,16 +1,16 @@
-# Cal Grabr
+# CalText
 
 A Chrome extension for Google Calendar that lets you click and drag to select time blocks and then copy them as text.
 
 Sharing availability means opening your calendar, scanning the week, and carefully typing out time slots. It's slow, error-prone, and easy to get the wrong day or forget the timezone.
 
-**Cal Grabr:** Turn on selection mode, drag over the times you're free and copy. 
+**CalText:** Turn on selection mode, drag over the times you're free and copy. 
 
 ---
 
 ## Install
 
-Cal Grabr is not yet on the Chrome Web Store. To install:
+CalText is not yet on the Chrome Web Store. To install:
 
 1. Download or clone this repo
 2. Go to `chrome://extensions`

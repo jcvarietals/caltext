@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Cal Grabr",
+  "name": "CalText",
   "version": "1.0.0",
   "description": "Select time blocks on Google Calendar and export as formatted bullet points",
   "permissions": [],
