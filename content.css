@@ -171,6 +171,19 @@
   cursor: not-allowed;
 }
 
+/* ── Week view warning ── */
+#cg-week-warning {
+  display: none;
+  margin: 0 12px 8px;
+  padding: 7px 10px;
+  background: #fef7e0;
+  border: 1px solid #f9ab00;
+  border-radius: 5px;
+  font-size: 11.5px;
+  color: #7a5800;
+  line-height: 1.4;
+}
+
 /* ── Output area ── */
 #cg-output-wrap {
   flex: 1;

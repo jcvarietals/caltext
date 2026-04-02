@@ -44,7 +44,6 @@
     },
     calibrated:  false,
     scrollRaf:   false,
-    mutationBusy: false,
   };
 
 
@@ -99,9 +98,23 @@
   }
 
   function getColBounds(date) {
-    const col = S.cal.dayCols.find(c => c.date === date);
+    const col  = S.cal.dayCols.find(c => c.date === date);
     if (!col) return null;
-    return { left: col.rect.left, width: col.rect.width };
+    const cols = S.cal.dayCols;
+    const idx  = cols.indexOf(col);
+    const scrollR = S.cal.scrollEl ? S.cal.scrollEl.getBoundingClientRect() : null;
+
+    // Left boundary: midpoint to previous column, or column left edge
+    const left = idx === 0
+      ? col.rect.left
+      : (cols[idx - 1].x + col.x) / 2;
+
+    // Right boundary: midpoint to next column, or scroll container content edge (excludes scrollbar)
+    const right = idx === cols.length - 1
+      ? (scrollR ? scrollR.left + S.cal.scrollEl.clientWidth : col.rect.right)
+      : (col.x + cols[idx + 1].x) / 2;
+
+    return { left, width: right - left };
   }
 
   function isInGrid(vx, vy) {
@@ -163,7 +176,12 @@
     return best;
   }
 
+  function isUnsupportedView() {
+    return /\/r\/(month|year|agenda|schedule)/.test(location.pathname);
+  }
+
   function calibrate() {
+    if (isUnsupportedView()) { S.calibrated = false; return false; }
     const dayCols = findDayCols();
     if (!dayCols.length) return false;
 
@@ -179,6 +197,9 @@
     S.cal.pxPerMinute = scrollEl.scrollHeight / (24 * 60);
     S.cal.dayCols     = dayCols;
     S.calibrated      = true;
+
+    // Re-apply crosshair to the (possibly new) scroll element if mode is on
+    applyCrosshair();
     return true;
   }
 
@@ -421,9 +442,14 @@
     document.addEventListener('click',     onDocClick,  { capture: true });
   }
 
+  function isInsidePopup(target) {
+    return !!target.closest('[role="menu"], [role="dialog"], [role="listbox"], [role="option"]');
+  }
+
   function onDocClick(e) {
     if (!S.modeOn || !S.calibrated) return;
     if (e.target.closest('#cg-panel')) return;
+    if (isInsidePopup(e.target)) return;
     if (!isInGrid(e.clientX, e.clientY)) return;
     e.preventDefault();
     e.stopPropagation();
@@ -432,6 +458,7 @@
   function onMouseDown(e) {
     if (!S.modeOn || !S.calibrated) return;
     if (e.target.closest('#cg-panel')) return;
+    if (isInsidePopup(e.target)) return;
     if (!isInGrid(e.clientX, e.clientY)) return;
 
     e.preventDefault();
@@ -517,6 +544,7 @@
         <div id="cg-mode-row">
           <button id="cg-mode-toggle">Selection Mode: OFF</button>
         </div>
+        <div id="cg-week-warning">⚠ Switch to <strong>week, day, or 4-day view</strong> to use CalText</div>
         <div id="cg-output-wrap">
           <textarea id="cg-output" readonly placeholder="Turn on Selection Mode, then click and drag on the calendar to add time blocks."></textarea>
         </div>
@@ -640,31 +668,32 @@
 
   function toggleMode() {
     S.modeOn = !S.modeOn;
-    // Inject/remove crosshair cursor style
-    let cs = document.getElementById('cg-cursor-style');
-    if (S.modeOn) {
-      if (!cs) {
-        cs    = document.createElement('style');
-        cs.id = 'cg-cursor-style';
-        document.head.appendChild(cs);
-      }
-      cs.textContent = 'body { cursor: crosshair !important; }';
-    } else {
-      if (cs) cs.textContent = '';
-      if (S.drag) { S.drag = null; if (previewEl) previewEl.style.display = 'none'; }
-    }
+    applyCrosshair();
+    if (!S.modeOn && S.drag) { S.drag = null; if (previewEl) previewEl.style.display = 'none'; }
     updateModeBtn();
   }
 
+  function applyCrosshair() {
+    // Apply crosshair only to the calendar scroll container, not the whole page
+    const scrollEl = S.cal.scrollEl;
+    if (!scrollEl) return;
+    if (S.modeOn) {
+      scrollEl.style.setProperty('cursor', 'crosshair', 'important');
+    } else {
+      scrollEl.style.removeProperty('cursor');
+    }
+  }
+
   function updateModeBtn() {
-    const btn = document.getElementById('cg-mode-toggle');
+    const btn     = document.getElementById('cg-mode-toggle');
+    const warning = document.getElementById('cg-week-warning');
     if (!btn) return;
     const on = S.modeOn;
     btn.textContent = `Selection Mode: ${on ? 'ON' : 'OFF'}`;
     btn.classList.toggle('cg-mode-on', on);
-    const onWeek = /\/r\/week/.test(location.pathname);
-    btn.disabled = !onWeek || !S.calibrated;
-    btn.title    = btn.disabled ? 'Only available in Google Calendar week view' : '';
+    btn.disabled = !S.calibrated;
+    btn.title    = '';
+    if (warning) warning.style.display = S.calibrated ? 'none' : 'block';
   }
 
   function updateOutput() {
@@ -714,7 +743,9 @@
     mutTimer = setTimeout(() => {
       if (!document.getElementById('cg-overlay')) injectOverlay();
       if (!document.getElementById('cg-panel'))   injectPanel();
-      if (calibrate()) { render(); updateModeBtn(); }
+      calibrate();
+      render();
+      updateModeBtn();
     }, 300);
   }
 
@@ -722,18 +753,11 @@
     const url = location.href;
     if (url === lastUrl) return;
     lastUrl = url;
-    if (!/\/r\/week/.test(location.pathname)) {
-      S.calibrated = false;
-      if (S.modeOn) {
-        S.modeOn = false;
-        const cs = document.getElementById('cg-cursor-style');
-        if (cs) cs.textContent = '';
-      }
-      updateModeBtn();
-    } else {
-      S.calibrated = false;
-      setTimeout(() => tryCalibrate(), 500);
-    }
+    S.calibrated = false;
+    if (S.modeOn) { S.modeOn = false; applyCrosshair(); }
+    render();
+    updateModeBtn();
+    if (!isUnsupportedView()) setTimeout(() => tryCalibrate(), 500);
   }
 
   function patchHistory() {
