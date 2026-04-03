@@ -11,24 +11,6 @@
 }
 
 
-/* ── Highlight blocks ── */
-.cg-highlight {
-  position: fixed;
-  pointer-events: none;
-  z-index: 9001;
-  border-radius: 3px;
-  box-sizing: border-box;
-}
-
-.cg-highlight-preview {
-  position: fixed;
-  pointer-events: none;
-  z-index: 9002;
-  border-radius: 3px;
-  box-sizing: border-box;
-  border: 2px dashed rgba(255, 255, 255, 0.6);
-}
-
 /* ── Panel ── */
 #cg-panel {
   position: fixed;
@@ -59,7 +41,7 @@
   background: #1a73e8;
   border-radius: 8px 0 0 8px;
   cursor: pointer;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   writing-mode: vertical-rl;
@@ -70,10 +52,6 @@
   padding: 10px 0;
   user-select: none;
   transition: background 0.15s;
-}
-
-#cg-tab {
-  display: none;
 }
 
 #cg-panel.cg-panel-collapsed #cg-tab {

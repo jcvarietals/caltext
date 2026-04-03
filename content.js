@@ -34,7 +34,7 @@
     settings:  { ...DEFAULTS },
     selections: [],   // [{ date:'YYYY-MM-DD', startMin, endMin }]
     undoStack:  [],   // max 10
-    drag:       null, // { mode:'add'|'remove', date, startMin, currentMin, block }
+    drag:       null, // { mode:'add', date, startMin, currentMin, block }
     modeOn:     false,
     collapsed:  true,
     cal: {
@@ -359,9 +359,7 @@
     const bottom = minuteToViewportY(endMin);
     const rgb    = hexToRgb(S.settings.color);
     const op     = preview ? Math.min(S.settings.opacity + 0.15, 0.75) : S.settings.opacity;
-    const bg     = preview && S.drag?.mode === 'remove'
-      ? 'rgba(220, 53, 69, 0.55)'
-      : `rgba(${rgb}, ${op})`;
+    const bg = `rgba(${rgb}, ${op})`;
 
     el.style.cssText = `
       position: fixed;
@@ -413,12 +411,7 @@
     let startMin = Math.min(ds.startMin, ds.currentMin);
     let endMin   = Math.max(ds.startMin, ds.currentMin);
 
-    if (ds.mode === 'remove' && ds.block) {
-      startMin = Math.max(startMin, ds.block.startMin);
-      endMin   = Math.min(endMin,   ds.block.endMin);
-    } else {
-      if (endMin - startMin < S.settings.increment) endMin = startMin + S.settings.increment;
-    }
+    if (endMin - startMin < S.settings.increment) endMin = startMin + S.settings.increment;
     startMin = Math.max(0, startMin);
     endMin   = Math.min(1439, endMin);
     if (endMin <= startMin) { previewEl.style.display = 'none'; return; }
@@ -509,12 +502,8 @@
     if (previewEl) previewEl.style.display = 'none';
     if (!ds) return;
 
-    if (ds.mode === 'add') {
-      const a = ds.startMin, b = ds.currentMin;
-      addBlock(ds.date, Math.min(a, b), snapCeil(Math.max(a, b)));
-    } else if (ds.mode === 'remove' && ds.block) {
-      removeRange(ds.block, Math.min(ds.startMin, ds.currentMin), Math.max(ds.startMin, ds.currentMin));
-    }
+    const a = ds.startMin, b = ds.currentMin;
+    addBlock(ds.date, Math.min(a, b), snapCeil(Math.max(a, b)));
     saveSel(); render(); updateOutput();
   }
 
@@ -785,7 +774,7 @@
         lastUrl = location.href;
         onNavigate();
       }
-    }, 100);
+    }, 250);
   }
 
 
