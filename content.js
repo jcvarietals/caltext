@@ -36,7 +36,7 @@
     undoStack:  [],   // max 10
     drag:       null, // { mode:'add'|'remove', date, startMin, currentMin, block }
     modeOn:     false,
-    collapsed:  false,
+    collapsed:  true,
     cal: {
       scrollEl:    null,
       pxPerMinute: 0,
