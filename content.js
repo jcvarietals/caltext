@@ -34,9 +34,9 @@
     settings:  { ...DEFAULTS },
     selections: [],   // [{ date:'YYYY-MM-DD', startMin, endMin }]
     undoStack:  [],   // max 10
-    drag:       null, // { mode:'add'|'remove', date, startMin, currentMin, block }
+    drag:       null, // { mode:'add', date, startMin, currentMin, block }
     modeOn:     false,
-    collapsed:  false,
+    collapsed:  true,
     cal: {
       scrollEl:    null,
       pxPerMinute: 0,
@@ -126,8 +126,11 @@
   }
 
   function snap(minute) {
-    const inc = S.settings.increment;
-    return Math.round(minute / inc) * inc;
+    return Math.round(minute / 15) * 15;
+  }
+
+  function snapCeil(minute) {
+    return Math.ceil(minute / 15) * 15;
   }
 
 
@@ -356,9 +359,7 @@
     const bottom = minuteToViewportY(endMin);
     const rgb    = hexToRgb(S.settings.color);
     const op     = preview ? Math.min(S.settings.opacity + 0.15, 0.75) : S.settings.opacity;
-    const bg     = preview && S.drag?.mode === 'remove'
-      ? 'rgba(220, 53, 69, 0.55)'
-      : `rgba(${rgb}, ${op})`;
+    const bg = `rgba(${rgb}, ${op})`;
 
     el.style.cssText = `
       position: fixed;
@@ -410,12 +411,7 @@
     let startMin = Math.min(ds.startMin, ds.currentMin);
     let endMin   = Math.max(ds.startMin, ds.currentMin);
 
-    if (ds.mode === 'remove' && ds.block) {
-      startMin = Math.max(startMin, ds.block.startMin);
-      endMin   = Math.min(endMin,   ds.block.endMin);
-    } else {
-      if (endMin - startMin < S.settings.increment) endMin = startMin + S.settings.increment;
-    }
+    if (endMin - startMin < S.settings.increment) endMin = startMin + S.settings.increment;
     startMin = Math.max(0, startMin);
     endMin   = Math.min(1439, endMin);
     if (endMin <= startMin) { previewEl.style.display = 'none'; return; }
@@ -470,12 +466,16 @@
 
     const hit = findBlockAt(date, minute);
     if (hit) {
-      S.drag = { mode: 'remove', date, startMin: minute, currentMin: minute, block: hit };
+      // Single-click remove: carve out one increment at the click point
+      const removeStart = snap(minute);
+      const removeEnd = removeStart + S.settings.increment;
+      removeRange(hit, removeStart, removeEnd);
+      saveSel(); render(); updateOutput();
     } else {
       pushUndo();
       S.drag = { mode: 'add', date, startMin: minute, currentMin: minute + S.settings.increment, block: null };
+      renderPreview();
     }
-    renderPreview();
   }
 
   function onMouseMove(e) {
@@ -502,11 +502,8 @@
     if (previewEl) previewEl.style.display = 'none';
     if (!ds) return;
 
-    if (ds.mode === 'add') {
-      addBlock(ds.date, Math.min(ds.startMin, ds.currentMin), Math.max(ds.startMin, ds.currentMin));
-    } else if (ds.mode === 'remove' && ds.block) {
-      removeRange(ds.block, Math.min(ds.startMin, ds.currentMin), Math.max(ds.startMin, ds.currentMin));
-    }
+    const a = ds.startMin, b = ds.currentMin;
+    addBlock(ds.date, Math.min(a, b), snapCeil(Math.max(a, b)));
     saveSel(); render(); updateOutput();
   }
 
@@ -535,11 +532,11 @@
     panel.id    = 'cg-panel';
     if (S.collapsed) panel.classList.add('cg-panel-collapsed');
     panel.innerHTML = `
-      <div id="cg-tab" title="CalText">CT</div>
+      <div id="cg-tab" title="CalText">CalText</div>
       <div id="cg-panel-body">
         <div id="cg-header">
           <span id="cg-title">CalText</span>
-          <button id="cg-collapse-btn" title="Collapse">&#9664;</button>
+          <button id="cg-collapse-btn" title="Collapse">&#9654;</button>
         </div>
         <div id="cg-mode-row">
           <button id="cg-mode-toggle">Selection Mode: OFF</button>
@@ -573,7 +570,7 @@
               </div>
             </div>
             <div class="cg-setting-row">
-              <label class="cg-setting-label">Time snap increment</label>
+              <label class="cg-setting-label">Minimum time block</label>
               <div class="cg-increment-row">
                 <button class="cg-increment-btn${S.settings.increment===15?' cg-active':''}" data-inc="15">15 min</button>
                 <button class="cg-increment-btn${S.settings.increment===30?' cg-active':''}" data-inc="30">30 min</button>
@@ -589,7 +586,11 @@
           </div>
         </div>
       </div>`;
+    panel.style.transition = 'none';
     document.body.appendChild(panel);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { panel.style.transition = ''; });
+    });
     bindPanelEvents();
     updateOutput();
     updateFormatPreview();
@@ -735,14 +736,17 @@
 
   // ── Mutation observer & navigation ─────────────────────────────────────────
 
-  let lastUrl  = location.href;
-  let mutTimer = null;
+  let lastUrl      = location.href;
+  let mutTimer     = null;
+  let navCooldown  = false;
+  let cooldownTimer = null;
 
   function onMutation() {
     clearTimeout(mutTimer);
     mutTimer = setTimeout(() => {
       if (!document.getElementById('cg-overlay')) injectOverlay();
       if (!document.getElementById('cg-panel'))   injectPanel();
+      if (navCooldown) return;
       calibrate();
       render();
       updateModeBtn();
@@ -757,15 +761,20 @@
     if (S.modeOn) { S.modeOn = false; applyCrosshair(); }
     render();
     updateModeBtn();
-    if (!isUnsupportedView()) setTimeout(() => tryCalibrate(), 500);
+    if (!isUnsupportedView()) {
+      setTimeout(() => { navCooldown = false; tryCalibrate(); }, 500);
+    } else {
+      navCooldown = false;
+    }
   }
 
-  function patchHistory() {
-    const orig = history.pushState.bind(history);
-    history.pushState = (...a) => { orig(...a); onNavigate(); };
-    const orig2 = history.replaceState.bind(history);
-    history.replaceState = (...a) => { orig2(...a); onNavigate(); };
-    window.addEventListener('popstate', onNavigate);
+  function startUrlPoll() {
+    setInterval(() => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        onNavigate();
+      }
+    }, 250);
   }
 
 
@@ -794,15 +803,23 @@
       for (const m of mutations) {
         const val = m.target.getAttribute('aria-label') || '';
         if (COL_RE.test(val)) {
-          // A day header changed — week is transitioning, clear highlights immediately
+          // A day header changed — view is transitioning
+          // Clear highlights instantly and block mutation calibration until layout settles
+          navCooldown = true;
+          S.calibrated = false;
           if (hlContainer) hlContainer.innerHTML = '';
+          clearTimeout(cooldownTimer);
+          cooldownTimer = setTimeout(() => {
+            navCooldown = false;
+            tryCalibrate();
+          }, 500);
           return;
         }
       }
     }).observe(document.body, { attributes: true, attributeFilter: ['aria-label'], subtree: true });
 
-    // SPA navigation
-    patchHistory();
+    // SPA navigation — poll URL (avoids monkey-patching pushState)
+    startUrlPoll();
 
     // Clear selections on page unload (not on tab switch)
     window.addEventListener('beforeunload', () => {

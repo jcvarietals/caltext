@@ -1,0 +1,29 @@
+Short description (132 chars max):
+Select time blocks on Google Calendar and copy your availability as formatted text. No data collected — everything stays in your browser.
+
+Detailed description:
+CalText lets you quickly select time blocks on Google Calendar and export them as clean, formatted text — perfect for sharing your availability over email, Slack, or text.
+
+HOW IT WORKS
+1. Open Google Calendar in week, day, or multi-day view
+2. Click the CalText tab on the right side of the screen
+3. Turn on Selection Mode
+4. Click and drag to select available time blocks
+5. Click Copy to copy your availability to the clipboard
+
+FEATURES
+• Click and drag to add time blocks
+• Click on a block to remove it
+• Works in week, day, and multi-day views
+• Customizable date/time format with live preview
+• Adjustable highlight color and opacity
+• 15 or 30 minute minimum time blocks
+• Bullet point or plain text output
+• Undo and Clear buttons
+• Selections persist across tab switches
+• Accumulate selections across multiple weeks
+
+PRIVACY
+CalText makes zero network requests. No data is collected, stored, or transmitted. Your settings are saved locally in your browser. Your selections are cleared when you close the tab. There is no analytics, tracking, or third-party code of any kind.
+
+CalText is open source: https://github.com/jcvarietals/caltext
