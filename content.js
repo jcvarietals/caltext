@@ -15,6 +15,8 @@
     opacity:   0.35,
     increment: 30,
     bullets:   true,
+    timezone:  'local',  // 'local' = browser default, or IANA like 'Asia/Hong_Kong'
+    dualTz:    false,   // show both local and selected timezone
   };
 
   // Matches tokens OR bracketed literals [like this]
@@ -34,7 +36,7 @@
     settings:  { ...DEFAULTS },
     selections: [],   // [{ date:'YYYY-MM-DD', startMin, endMin }]
     undoStack:  [],   // max 10
-    drag:       null, // { mode:'add', date, startMin, currentMin, block }
+    drag:       null, // { mode:'add'|'remove', date, startMin, currentMin, block }
     modeOn:     false,
     collapsed:  true,
     cal: {
@@ -324,18 +326,82 @@
     });
   }
 
-  function tzAbbr() {
-    const s = new Date().toLocaleTimeString('en-US', { timeZoneName: 'short' });
-    return (s.match(/\b([A-Z]{2,5})\b$/) || ['',''])[1] || 'Local';
+  function getTzAbbr(tz) {
+    const opts = {};
+    if (tz && tz !== 'local') opts.timeZone = tz;
+    // Try 'short' first (gives PDT, EST, etc.), check if it returns a real abbreviation
+    const s = new Date().toLocaleTimeString('en-US', { ...opts, timeZoneName: 'short' });
+    const match = s.match(/\b([A-Z]{2,5})\b\s*$/);
+    if (match) return match[1];
+    // If 'short' gave GMT+X format, try 'shortGeneric' for a name like "HK Time"
+    try {
+      const s2 = new Date().toLocaleTimeString('en-US', { ...opts, timeZoneName: 'shortGeneric' });
+      const m2 = s2.match(/\b([A-Z]{2,5})\b\s*$/);
+      if (m2) return m2[1];
+    } catch (_) {}
+    // Fall back to the full short string (e.g. "GMT+8")
+    const fallback = s.match(/(GMT[+-]\d{1,2}(?::\d{2})?)$/);
+    return fallback ? fallback[1] : 'Local';
+  }
+
+  function tzAbbr() { return getTzAbbr(S.settings.timezone); }
+
+  function localTzAbbr() { return getTzAbbr('local'); }
+
+  function tzDisplayName() {
+    if (S.settings.timezone === 'local') return 'Local (browser default)';
+    const city = S.settings.timezone.split('/').pop().replace(/_/g, ' ');
+    return `${city} (${tzAbbr()})`;
+  }
+
+  // Convert a local date+minute to a target timezone, returning { date, minute }
+  function convertTz(dateStr, minute, targetTz) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const localDate = new Date(y, m - 1, d, Math.floor(minute / 60), minute % 60);
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: targetTz,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    }).formatToParts(localDate);
+    const get = type => parts.find(p => p.type === type)?.value;
+    const tDate = `${get('year')}-${get('month')}-${get('day')}`;
+    let tHour = parseInt(get('hour'));
+    if (tHour === 24) tHour = 0; // midnight edge case
+    const tMinute = tHour * 60 + parseInt(get('minute'));
+    return { date: tDate, minute: tMinute };
+  }
+
+  function getTimezoneList() {
+    try { return Intl.supportedValuesOf('timeZone'); }
+    catch (_) { return []; }
   }
 
   function generateText() {
     if (!S.selections.length) return '';
-    const tz = tzAbbr();
-    const prefix = S.settings.bullets ? '\u2022 ' : '';
-    return S.selections
-      .map(s => `${prefix}${fmtDateTime(s.date, s.startMin, S.settings.format)} \u2013 ${fmtTime(s.endMin)} ${tz}`)
-      .join('\n');
+    const prefix  = S.settings.bullets ? '\u2022 ' : '';
+    const localTz = localTzAbbr();
+    const hasTz   = S.settings.timezone !== 'local';
+    const selTz   = hasTz ? tzAbbr() : localTz;
+    const dual    = S.settings.dualTz && hasTz;
+
+    return S.selections.map(s => {
+      if (!hasTz) {
+        // No custom timezone — show local times
+        return `${prefix}${fmtDateTime(s.date, s.startMin, S.settings.format)} \u2013 ${fmtTime(s.endMin)} ${localTz}`;
+      }
+
+      // Convert to selected timezone
+      const cStart = convertTz(s.date, s.startMin, S.settings.timezone);
+      const cEnd   = convertTz(s.date, s.endMin,   S.settings.timezone);
+
+      const converted = `${fmtDateTime(cStart.date, cStart.minute, S.settings.format)} \u2013 ${fmtTime(cEnd.minute)} ${selTz}`;
+
+      if (dual) {
+        const local = `${fmtDateTime(s.date, s.startMin, S.settings.format)} \u2013 ${fmtTime(s.endMin)} ${localTz}`;
+        return `${prefix}${local} // ${converted}`;
+      }
+      return `${prefix}${converted}`;
+    }).join('\n');
   }
 
 
@@ -359,7 +425,9 @@
     const bottom = minuteToViewportY(endMin);
     const rgb    = hexToRgb(S.settings.color);
     const op     = preview ? Math.min(S.settings.opacity + 0.15, 0.75) : S.settings.opacity;
-    const bg = `rgba(${rgb}, ${op})`;
+    const bg = preview && S.drag?.mode === 'remove'
+      ? 'rgba(220, 53, 69, 0.55)'
+      : `rgba(${rgb}, ${op})`;
 
     el.style.cssText = `
       position: fixed;
@@ -411,7 +479,12 @@
     let startMin = Math.min(ds.startMin, ds.currentMin);
     let endMin   = Math.max(ds.startMin, ds.currentMin);
 
-    if (endMin - startMin < S.settings.increment) endMin = startMin + S.settings.increment;
+    if (ds.mode === 'remove' && ds.block) {
+      startMin = Math.max(startMin, ds.block.startMin);
+      endMin   = Math.min(endMin,   ds.block.endMin);
+    } else {
+      if (endMin - startMin < S.settings.increment) endMin = startMin + S.settings.increment;
+    }
     startMin = Math.max(0, startMin);
     endMin   = Math.min(1439, endMin);
     if (endMin <= startMin) { previewEl.style.display = 'none'; return; }
@@ -466,16 +539,12 @@
 
     const hit = findBlockAt(date, minute);
     if (hit) {
-      // Single-click remove: carve out one increment at the click point
-      const removeStart = snap(minute);
-      const removeEnd = removeStart + S.settings.increment;
-      removeRange(hit, removeStart, removeEnd);
-      saveSel(); render(); updateOutput();
+      S.drag = { mode: 'remove', date, startMin: minute, currentMin: minute, block: hit };
     } else {
       pushUndo();
       S.drag = { mode: 'add', date, startMin: minute, currentMin: minute + S.settings.increment, block: null };
-      renderPreview();
     }
+    renderPreview();
   }
 
   function onMouseMove(e) {
@@ -502,8 +571,20 @@
     if (previewEl) previewEl.style.display = 'none';
     if (!ds) return;
 
-    const a = ds.startMin, b = ds.currentMin;
-    addBlock(ds.date, Math.min(a, b), snapCeil(Math.max(a, b)));
+    if (ds.mode === 'remove' && ds.block) {
+      const rStart = Math.min(ds.startMin, ds.currentMin);
+      const rEnd   = Math.max(ds.startMin, ds.currentMin);
+      if (rEnd - rStart < S.settings.increment) {
+        // Didn't drag far enough — single-click remove one increment
+        const snapStart = snap(ds.startMin);
+        removeRange(ds.block, snapStart, snapStart + S.settings.increment);
+      } else {
+        removeRange(ds.block, rStart, snapCeil(rEnd));
+      }
+    } else {
+      const a = ds.startMin, b = ds.currentMin;
+      addBlock(ds.date, Math.min(a, b), snapCeil(Math.max(a, b)));
+    }
     saveSel(); render(); updateOutput();
   }
 
@@ -583,6 +664,18 @@
                 <button class="cg-increment-btn${!S.settings.bullets?' cg-active':''}" data-bullets="false">Plain</button>
               </div>
             </div>
+            <div class="cg-setting-row">
+              <label class="cg-setting-label">Time zone</label>
+              <div id="cg-tz-wrap">
+                <input class="cg-setting-input" id="cg-tz-input" type="text" placeholder="Search city..." autocomplete="off">
+                <div id="cg-tz-current"><span id="cg-tz-current-text">${escHtml(tzDisplayName())}</span> <a id="cg-tz-reset" href="#" style="display:${S.settings.timezone !== 'local' ? 'inline' : 'none'}">(Reset)</a></div>
+                <div id="cg-tz-results"></div>
+              </div>
+              <label class="cg-dual-tz-label" id="cg-dual-tz-row" style="display:${S.settings.timezone !== 'local' ? 'flex' : 'none'}">
+                <input type="checkbox" id="cg-dual-tz" ${S.settings.dualTz ? 'checked' : ''}>
+                <span>Show both local and converted time</span>
+              </label>
+            </div>
           </div>
         </div>
       </div>`;
@@ -637,6 +730,71 @@
       S.settings.opacity = v / 100;
       $('cg-opacity-val').textContent = `${v}%`;
       saveSet(); updateColors();
+    });
+
+    // Timezone search
+    const tzInput   = $('cg-tz-input');
+    const tzResults = $('cg-tz-results');
+    const tzCurrent = $('cg-tz-current');
+    const allZones  = getTimezoneList();
+
+    tzInput.addEventListener('input', () => {
+      const q = tzInput.value.trim().toLowerCase();
+      tzResults.innerHTML = '';
+      if (q.length < 2) { tzResults.style.display = 'none'; return; }
+
+      // Search by city name (last segment of IANA ID)
+      const matches = allZones.filter(tz => {
+        const city = tz.split('/').pop().replace(/_/g, ' ').toLowerCase();
+        const region = tz.replace(/_/g, ' ').toLowerCase();
+        return city.includes(q) || region.includes(q);
+      }).slice(0, 8);
+
+      if (!matches.length) { tzResults.style.display = 'none'; return; }
+      tzResults.style.display = 'block';
+      for (const tz of matches) {
+        const city = tz.split('/').pop().replace(/_/g, ' ');
+        const abbr = getTzAbbr(tz);
+        const div = document.createElement('div');
+        div.className = 'cg-tz-option';
+        div.textContent = `${city} (${abbr})`;
+        div.dataset.tz = tz;
+        div.addEventListener('click', () => {
+          S.settings.timezone = tz;
+          saveSet();
+          $('cg-tz-current-text').textContent = tzDisplayName();
+          $('cg-tz-reset').style.display = 'inline';
+          tzInput.value = '';
+          tzResults.style.display = 'none';
+          $('cg-dual-tz-row').style.display = 'flex';
+          updateOutput(); updateFormatPreview();
+        });
+        tzResults.appendChild(div);
+      }
+    });
+
+    tzInput.addEventListener('focus', () => {
+      if (tzInput.value.trim().length >= 2) tzInput.dispatchEvent(new Event('input'));
+    });
+
+    // Reset to local
+    $('cg-tz-reset').addEventListener('click', e => {
+      e.preventDefault();
+      S.settings.timezone = 'local';
+      S.settings.dualTz = false;
+      saveSet();
+      $('cg-tz-current-text').textContent = tzDisplayName();
+      $('cg-tz-reset').style.display = 'none';
+      $('cg-dual-tz-row').style.display = 'none';
+      $('cg-dual-tz').checked = false;
+      updateOutput(); updateFormatPreview();
+    });
+
+    // Dual timezone toggle
+    $('cg-dual-tz').addEventListener('change', e => {
+      S.settings.dualTz = e.target.checked;
+      saveSet();
+      updateOutput();
     });
 
     document.getElementById('cg-panel').addEventListener('click', e => {
