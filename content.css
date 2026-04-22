@@ -255,7 +255,7 @@
   flex-shrink: 0;
   border-top: 1px solid #e8eaed;
   overflow-y: auto;
-  max-height: 220px;
+  max-height: 280px;
 }
 
 #cg-settings-toggle {
@@ -332,6 +332,70 @@
   margin-top: 3px;
   font-style: italic;
   min-height: 14px;
+}
+
+/* ── Timezone search ── */
+#cg-tz-wrap {
+  position: relative;
+}
+
+#cg-tz-current {
+  font-size: 11px;
+  color: #5f6368;
+  margin-top: 4px;
+}
+
+#cg-tz-reset {
+  color: #1a73e8;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+#cg-tz-reset:hover {
+  text-decoration: underline;
+}
+
+#cg-tz-results {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  background: white;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 10;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.cg-tz-option {
+  padding: 6px 8px;
+  font-size: 11.5px;
+  color: #202124;
+  cursor: pointer;
+}
+
+.cg-tz-option:hover {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.cg-dual-tz-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #5f6368;
+  cursor: pointer;
+}
+
+.cg-dual-tz-label input[type="checkbox"] {
+  accent-color: #1a73e8;
+  margin: 0;
+  cursor: pointer;
 }
 
 .cg-color-row {
